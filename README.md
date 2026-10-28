@@ -6,6 +6,9 @@ Select some text, then:
 - **Smaller:** hold **Ctrl**, press **S**, keep holding Ctrl and tap **Space**. Each Space is one step smaller.
 - **Bigger:** hold **Ctrl**, press **B**, keep holding Ctrl and tap **Space**. Each Space is one step bigger.
 
+And anywhere in a note:
+- **Go to top:** hold **Ctrl**, press **T**, keep holding Ctrl and tap **Space**. The cursor jumps to the top of the note (below the frontmatter, if any).
+
 (On a Mac, Cmd instead of Ctrl.)
 
 The text is wrapped in a span, which Obsidian shows in Live Preview and Reading view:
@@ -19,7 +22,9 @@ The text is wrapped in a span, which Obsidian shows in Live Preview and Reading 
 - **Pressing again resizes the same span**; it never nests spans. After each step the whole span stays selected, and selecting just the text inside a span works too.
 - **Several lines selected:** each line is sized on its own, and list bullets, task boxes, numbers, heading `#` and quote `>` stay outside the span, so they keep working.
 - **Ctrl+B still bolds.** With text selected, Ctrl+B waits about a third of a second for a Space; if none comes, it bolds as usual. With nothing selected, Ctrl+B and Ctrl+S are untouched.
+- **Ctrl+T still opens a new tab.** It waits about a third of a second for a Space; if none comes, the new tab opens as usual.
 - **Ctrl+S still saves** (harmless; it happens anyway).
+- Keys are read by their physical position, so it also works with Vietnamese input tools (Unikey, EVKey) and other keyboard layouts.
 - Also available as commands: **Make selection smaller** / **Make selection bigger** (assign your own hotkeys if you like).
 
 ## Install (manual)
