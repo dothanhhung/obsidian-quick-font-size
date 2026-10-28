@@ -8,7 +8,7 @@ const OPEN_RE = /<span style="font-size:\s*([\d.]+)em">$/;
 const WRAP_RE = /^<span style="font-size:\s*([\d.]+)em">([\s\S]*)<\/span>$/;
 // List bullet, numbered item, heading or quote marker kept outside the span.
 const PREFIX_RE = /^(\s*(?:[-*+] \[.\] |[-*+] |\d+[.)] |#{1,6} |> ?)*)/;
-const BOLD_WAIT_MS = 350; // Ctrl+B waits this long for a Space before bolding
+const HOLD_WAIT_MS = 350; // Ctrl+B / Ctrl+T wait this long for a Space before bold / new tab
 
 function nextSize(size, dir) {
   // Nearest ladder step, then one step up or down.
@@ -35,12 +35,12 @@ function stepLine(line, dir) {
 
 module.exports = class QuickFontSizePlugin extends Plugin {
   onload() {
-    this.mode = 0;       // -1 = smaller (Ctrl+S held), +1 = bigger (Ctrl+B held)
-    this.boldTimer = null;
+    this.mode = null;    // 'small' (Ctrl+S held), 'big' (Ctrl+B held), 'top' (Ctrl+T held)
+    this.holdTimer = null;
 
     this.registerDomEvent(document, 'keydown', (e) => this.onKeyDown(e), true);
     this.registerDomEvent(document, 'keyup', (e) => {
-      if (e.key === 'Control' || e.key === 'Meta') this.mode = 0;
+      if (e.key === 'Control' || e.key === 'Meta') this.mode = null;
     }, true);
 
     this.addCommand({ id: 'smaller', name: 'Make selection smaller', editorCallback: (ed) => this.resize(ed, -1) });
@@ -48,7 +48,7 @@ module.exports = class QuickFontSizePlugin extends Plugin {
   }
 
   onunload() {
-    clearTimeout(this.boldTimer);
+    clearTimeout(this.holdTimer);
   }
 
   editor() {
@@ -59,38 +59,55 @@ module.exports = class QuickFontSizePlugin extends Plugin {
   onKeyDown(e) {
     const ctrl = e.ctrlKey || e.metaKey;
     if (!ctrl || e.altKey || e.shiftKey) return;
-    const key = e.key.toLowerCase();
+    // Physical key (e.code): a Vietnamese input tool or another layout can
+    // change e.key.
+    const key = { KeyS: 's', KeyB: 'b', KeyT: 't' }[e.code] || (e.key || '').toLowerCase();
+    const space = e.code === 'Space' || e.key === ' ';
 
-    // Ctrl + (S or B held) + Space: one size step per Space.
-    if (e.code === 'Space' && this.mode) {
+    // Ctrl + (S, B or T held) + Space.
+    if (space && this.mode) {
       const ed = this.editor();
       if (!ed) return;
       e.preventDefault();
       e.stopPropagation();
-      if (this.boldTimer) { clearTimeout(this.boldTimer); this.boldTimer = null; } // no bold after all
-      this.resize(ed, this.mode);
+      if (this.holdTimer) { clearTimeout(this.holdTimer); this.holdTimer = null; } // no bold / new tab after all
+      if (this.mode === 'top') this.goTop(ed);
+      else this.resize(ed, this.mode === 'small' ? -1 : 1);
       return;
     }
 
-    if (key !== 's' && key !== 'b') return;
+    if (key !== 's' && key !== 'b' && key !== 't') return;
     const ed = this.editor();
-    if (!ed || !ed.somethingSelected()) return; // nothing selected: S and B behave as usual
-    this.mode = key === 's' ? -1 : 1;
+    if (!ed) return;
+    // S and B only mean something with text selected; otherwise they behave as usual.
+    if (key !== 't' && !ed.somethingSelected()) return;
+    this.mode = { s: 'small', b: 'big', t: 'top' }[key];
 
-    // Ctrl+S: let Obsidian save as usual. Ctrl+B: hold the bold back briefly in
-    // case a Space follows; if none does, bold as usual.
-    if (key === 'b' && !e.repeat) {
-      e.preventDefault();
-      e.stopPropagation();
-      clearTimeout(this.boldTimer);
-      this.boldTimer = setTimeout(() => {
-        this.boldTimer = null;
-        this.app.commands.executeCommandById('editor:toggle-bold');
-      }, BOLD_WAIT_MS);
-    } else if (key === 'b') {
-      e.preventDefault(); // held B auto-repeat: never re-bold
-      e.stopPropagation();
+    // Ctrl+S: let Obsidian save as usual. Ctrl+B (bold) and Ctrl+T (new tab):
+    // hold them back briefly in case a Space follows; if none does, run them.
+    if (key === 's') return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.repeat) return; // held key auto-repeat: never re-run
+    const command = key === 'b' ? 'editor:toggle-bold' : 'workspace:new-tab';
+    clearTimeout(this.holdTimer);
+    this.holdTimer = setTimeout(() => {
+      this.holdTimer = null;
+      this.app.commands.executeCommandById(command);
+    }, HOLD_WAIT_MS);
+  }
+
+  // Cursor to the very top of the note (below the frontmatter, if any).
+  goTop(ed) {
+    let line = 0;
+    if (ed.getLine(0) === '---') {
+      for (let n = 1; n < ed.lineCount(); n++) {
+        if (ed.getLine(n) === '---') { line = Math.min(n + 1, ed.lineCount() - 1); break; }
+      }
     }
+    ed.setCursor({ line, ch: 0 });
+    ed.scrollIntoView({ from: { line: 0, ch: 0 }, to: { line, ch: 0 } }, true);
+    ed.focus();
   }
 
   resize(ed, dir) {

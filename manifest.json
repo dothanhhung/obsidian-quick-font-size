@@ -1,9 +1,9 @@
 {
   "id": "quick-font-size",
   "name": "Quick Font Size",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minAppVersion": "1.0.0",
-  "description": "Hold Ctrl+S (smaller) or Ctrl+B (bigger) and tap Space to resize the selected text one step at a time.",
+  "description": "Hold Ctrl+S (smaller) or Ctrl+B (bigger) and tap Space to resize the selected text; Ctrl+T then Space jumps to the top of the note.",
   "author": "dothanhhung",
   "authorUrl": "https://github.com/dothanhhung",
   "isDesktopOnly": false
